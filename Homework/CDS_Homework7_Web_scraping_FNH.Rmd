@@ -1,0 +1,59 @@
+---
+title: "CDS Homework 7 - practice web scraping"
+author: "Frederik Normann Holm"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Loading necessary packages
+I have chosen to scrape records and statistics of my favorite football team AS Roma. 
+Firstly, i load a bunch of helpful packages (including rvest) from the library
+```{r libraries, warning=FALSE, message=FALSE}
+library(rvest)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(janitor)
+```
+
+## Scraping the data from Wikipedia
+now i scrape the website by submitting the url 
+```{r url}
+url <- "https://en.wikipedia.org/wiki/List_of_A.S._Roma_records_and_statistics"
+url_html <- read_html(url)
+```
+
+```{r scrape-table}
+whole_table <- url_html %>% 
+ html_nodes("table") %>%
+ html_table()  
+str(whole_table)
+```
+Unlisting and combining as colums
+```{r html-to-df}
+new_table <- do.call(cbind,unlist(whole_table, recursive = FALSE))
+head(new_table)
+```
+## Scraping only the wanted tables from Wikipedia page
+By telling r that i only want the first 3 tables on the Wikipedia page, i put a square bracket after the "whole_table".
+```{r scrape-funtion}
+scrape_roma_records <- function(website){
+	url <- read_html(website)
+	whole_table[1:3] <- url %>% 
+		html_nodes("table") %>%
+		html_table()  # result is a list
+	whole_table[1:3] <- do.call(cbind,unlist(whole_table[1:3], recursive = FALSE))
+}
+```
+Testing that the function works on the clubs records that i selected it to scrape
+```{r testing-function}
+tablegoals <- scrape_roma_records("https://en.wikipedia.org/wiki/List_of_A.S._Roma_records_and_statistics")
+tablegoals %>% 
+	print(tablegoals)
+```
+
+
