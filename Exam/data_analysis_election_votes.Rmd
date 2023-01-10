@@ -1,0 +1,45 @@
+---
+title: "Presidential elections"
+author: "Frederik Normann Holm"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Loading packages
+
+```{r packages}
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+```
+
+## loading data into RStudio
+```{r cars}
+getwd()
+```
+
+```{r}
+elec_data <- read.csv("votes_cast.csv")
+elec_data
+```
+## plotting the data 
+First i reshape the dataframe in order for it to work appropriately with the ggplot visualization
+```{r reshaping}
+DF <- data.frame(pol_party = c("rep_voters", "dem_voters"),
+                 x2000 = c(2605, 5487),
+                 x2004 = c(3330, 7913),
+                 x2008 = c(2913, 8491),
+                 x2012 = c(2796, 7516),
+                 x2016 = c(2999, 7741),
+                 x2020 = c(2695, 6801))
+DFvotes <- DF %>% gather(key = Year, value = Votes, x2000:x2020)
+DFvotes
+```
+Now for plotting:
+```{r plot}
+ggplot(DFvotes, aes(Year, Votes, fill = pol_party)) + geom_col(position = "dodge")
+```
+
