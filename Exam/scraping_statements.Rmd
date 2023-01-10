@@ -1,0 +1,72 @@
+---
+title: "webscrape_statements"
+author: "Frederik Normann Holm"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## loading packages 
+```{r packages}
+library(rvest)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(janitor)
+```
+
+## Scraping the different statements
+statement 1
+```{r stat1}
+url <- "https://studentsonmay4.com/reflections/listening-in/"
+#scraping the website
+stat1_html <- read_html(url)
+#using the <p> tag to only extract the text with meaning from the URL
+stat1_html %>% 
+	html_nodes("p") %>% 
+	html_text()
+```
+statement 2
+```{r stat2}
+url <- "https://studentsonmay4.com/reflections/lesson-from-blanket-hill/"
+#scraping the website
+stat2_html <- read_html(url)
+#using the <p> tag to only extract the text with meaning from the URL
+stat2_html %>% 
+	html_nodes("p") %>% 
+	html_text()
+```
+statement 3
+```{r stat3}
+url <- "https://studentsonmay4.com/reflections/connecting-to-may-4th/"
+#scraping the website
+stat3_html <- read_html(url)
+#using the <p> tag to only extract the text with meaning from the URL
+stat3_html %>% 
+	html_nodes("p") %>% 
+	html_text()
+```
+statement 4
+```{r stat4}
+url <- "https://studentsonmay4.com/people/guns-on-campus-through-the-kent-state-lens/"
+#scraping the website
+stat4_html <- read_html(url)
+#using the <p> tag to only extract the text with meaning from the URL
+stat4_html %>% 
+	html_nodes("p") %>% 
+	html_text()
+```
+statement 5
+```{r stat 5}
+url <- "https://medium.com/@may4thtaskforce/open-letter-on-bad-faith-kent-state-and-the-may-4th-task-force-92f4bfa4eea"
+#scraping the website
+stat5_html <- read_html(url)
+#using the <p> tag to only extract the relevant text from the URL
+stat5_html %>% 
+	html_nodes("p") %>% 
+	html_text()
+```
+

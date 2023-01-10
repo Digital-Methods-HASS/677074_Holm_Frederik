@@ -1,0 +1,178 @@
+---
+title: "Sentiment_analysis_taskforce"
+author: "Frederik Normann Holm"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+## Loading packages 
+
+For the sentiment analysis i will need the following packages as well as the NRC and AFINN lexica
+For text mining, pdftools, tidytext, textdata and ggwordcloud are beneficial
+
+```{r setup}
+knitr::opts_chunk$set(echo = TRUE,
+                      warning = FALSE,
+                      message = FALSE)
+library(tidyverse)
+library(here)
+
+library(pdftools)
+library(tidytext)
+library(textdata) 
+library(ggwordcloud)
+```
+
+## Getting the statements 
+
+For the sentiment analysis, a collection of statements by the May 4th Task Force and regular students have been collected from https://studentsonmay4.com/
+They have been manually bundled together and converted into a pdf-format
+
+```{r loading_pdf}
+stat_path <- here("data","Student_statements.pdf")
+stat_text <- pdf_text(stat_path)
+```
+
+## Wrangling
+In the following chunk of code i split up pages into separate lines (separated by `\n`). I do this by using `stringr::str_split()`
+Then, i unnest into regular columns using `tidyr::unnest()`, and lastly, `stringr::str_trim()` will remove/trim starting and trailing spaces
+```{r split-lines}
+stat_df <- data.frame(stat_text) %>% 
+  mutate(text_full = str_split(stat_text, pattern = '\\n')) %>% 
+  unnest(text_full) %>% 
+  mutate(text_full = str_trim(text_full))
+```
+At this point, each line is its own row with starting and trailing spaces removed
+
+## Getting individual words (tokens)
+
+Here i use `tidytext::unnest_tokens()` to split columms into tokens. In this case, words are the tokens i am after
+```{r tokens}
+stat_tokens <- stat_df %>% 
+  unnest_tokens(word, text_full)
+stat_tokens
+```
+
+Now i will count the words in order to see the abundance of stop words to be removed later
+```{r count}
+stat_wc <- stat_tokens %>% 
+  count(word) %>% 
+  arrange(-n)
+stat_wc
+
+```
+As the count above shows, there is an abundance of stopwords. Those will be removed in the following section
+
+## Removing stop words
+by utilizng `anti_join()` from tidyr, i will remove stop words from the text
+```{r stop words}
+stat_stop <- stat_tokens %>% 
+  anti_join(stop_words) %>% 
+  select(-stat_text)
+
+# counting again after stopwords removed
+stat_swc <- stat_stop %>% 
+  count(word) %>% 
+  arrange(-n)
+stat_swc
+```
+
+Now for removing numerics:
+```{r numeric}
+stat_no_numeric <- stat_stop %>% 
+  filter(is.na(as.numeric(word)))
+stat_no_numeric
+```
+Checking the amount of unique words in text data after removing stop words and numerics:
+```{r uniquewords}
+length(unique(stat_no_numeric$word))
+```
+
+visualizing the 1637 unique words in a wordcloud will give a overwhelming result, so i go with the 50 most frequent words
+```{r}
+stat_top50 <- stat_no_numeric %>% 
+  count(word) %>% 
+  arrange(-n) %>% 
+  head(50)
+
+ggplot(data = stat_top50, aes(label = word, size = n)) +
+  geom_text_wordcloud_area(aes(color = n), shape = "diamond") +
+  scale_size_area(max_size = 12) +
+  scale_color_gradientn(colors = c("darkgreen","blue","red")) +
+  theme_minimal()
+```
+## Sentiment analysis NRC
+Now for the sentiment analysis using the NRC lexicon
+Firstly i load the lexicon 
+```{r get-sentiments}
+get_sentiments(lexicon = "nrc")
+```
+
+Now i can start "binning" individual words to the feeling they are typically associated with
+
+```{r binning}
+stat_nrc <- stat_stop %>% 
+  inner_join(get_sentiments("nrc"))
+
+#this excludes some of the words in the provided text, so i check which words have been excluded by 'anti_join()'
+
+stat_exclude <- stat_stop %>% 
+  anti_join(get_sentiments("nrc"))
+
+#counting most excluded words
+
+stat_exclude_n <- stat_exclude %>% 
+  count(word, sort = TRUE)
+head(stat_exclude_n)
+```
+From the list of excluded words, it can be said that none of them have an influence on the overall outcome of the sentiment analysis
+
+Now i count and plot the amount of words in each sentiment category in order to gain an overview of overall sentiments
+```{r counting and plotting}
+stat_nrc_n <- stat_nrc %>% 
+  count(sentiment, sort = TRUE)
+  ggplot(data = stat_nrc_n, aes(x = sentiment, y = n)) +
+  geom_col()
+```
+
+Now for a more detailed visualization of all the sentiment categories and the top words associated with each of them:
+```{r detailed vis}
+#first i count and group the words with a minimum of 5 appearances for each sentiment category
+stat_nrc_n5 <- stat_nrc %>% 
+  count(word,sentiment, sort = TRUE) %>% 
+  group_by(sentiment) %>% 
+  top_n(5) %>% 
+  ungroup()
+#then i add the top words for each sentiment to a ggplot 
+stat_nrc_gg <- ggplot(data = stat_nrc_n5, aes(x = reorder(word,n), y = n, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, ncol = 5, scales = "free") +
+  coord_flip() +
+  theme_minimal() +
+  labs(x = "Word", y = "count")
+stat_nrc_gg
+```
+In the context of the Kent State Shootings, the fact that "guard" is included under "trust" and "positive" is counterintuitive for the goal of the report
+so i check the word "guard"
+```{r guard}
+guard <- get_sentiments(lexicon = "nrc") %>% 
+  filter(word == "guard")
+guard
+```
+
+## AFINN analysis
+I will now use the AFINN lexicon to delve deeper into a median sentiment of the text
+```{r getting afinn}
+#loading lexicon
+stat_afinn <- stat_stop %>% 
+  inner_join(get_sentiments("afinn"))
+```
+```{r summary}
+stat_summary <- stat_afinn %>% 
+  summarize(
+    mean_score = mean(value),
+    median_score = median(value)
+  )
+stat_summary
+```
+it can therefore be said that the median sentiment of the statements is slightly negative
